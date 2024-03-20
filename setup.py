@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-  name='upload_blobcontainer',
+  name='upload_blob_container',
   version='0.0.1',
   author='Skye.Yao',
   url=r'https://github.com/TianlingYao/load_sftp',
