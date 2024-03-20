@@ -7,7 +7,7 @@ setup(
   url=r'https://github.com/TianlingYao/load_sftp',
   author_email='skye.yao@ap.jll.com',
   description='upload file into blob container wheel',
-  packages=find_packages(exclude=['test**']),
+  packages=find_packages(exclude=["example*"]),
   # entry_points={
   #   'group_1': 'run=my_test_code.__main__:main
   # },
