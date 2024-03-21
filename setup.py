@@ -25,5 +25,6 @@ setup(
 'aliyun-python-sdk-kms==2.16.2',
 'pyspark',
 'azure'
-  ]
+  ],
+  include_package_data=True
 )
