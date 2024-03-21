@@ -1,7 +1,9 @@
 import pyspark.sql.functions as F
 from pyspark.sql import Window
 from pyspark.sql import SparkSession
-from azure.cosmosdb.table.tableservice import TableService
+
+
+import upload_blob_container.environment as env
 import pandas as pd
 import datetime as dt
 import json
@@ -9,10 +11,10 @@ import io
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from cryptography.fernet import Fernet as F
 import hashlib
-# from Crypto.Cipher import AES
+
 import base64
 import os
-# import pyspark.pandas as ps
+
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.acs_exception.exceptions import ClientException
 from aliyunsdkcore.acs_exception.exceptions import ServerException
@@ -23,20 +25,24 @@ from alibabacloud_credentials.models import Config
 from aliyunsdkkms.request.v20160120 import GetSecretValueRequest
 
 
+
 class DataUploader:
-    def __init__(self, landing_Access_token, access_key, secret_key, role_arn, secret_name, loadmode="full",
+
+    def __init__(self, loadmode="full",
                  deltaloaddays=3, encryption=True, batchload=False, batchsize=0):
+        self.dbutils = env.get_dbutils(env.spark)
+        self.spark = env.spark
         self.loadmode = loadmode
         self.deltaloaddays = deltaloaddays
         self.encryption = encryption
         self.batchload = batchload
         self.batchsize = batchsize
 
-        self.landing_Access_token = landing_Access_token
-        self.access_key = access_key
-        self.secret_key = secret_key
-        self.role_arn = role_arn
-        self.secret_name = secret_name
+        self.landing_Access_token = self.dbutils.secrets.get("udp-infra", "udpcnm-app-blob-conn")
+        self.access_key = self.dbutils.secrets.get("udp-infra", "sftp-ak")
+        self.secret_key = self.dbutils.secrets.get("udp-infra", "sftp-sk")
+        self.role_arn = self.dbutils.secrets.get("udp-infra", "sftp-role-arn")
+        self.secret_name = self.dbutils.secrets.get("udp-infra", "sftp-secret-name")
 
         self.container_name = 'sftp'
         self.Current_Time = dt.datetime.now() + dt.timedelta(hours=8)
@@ -57,7 +63,7 @@ class DataUploader:
         Credentials_AccessKeyId = response["Credentials"]['AccessKeyId']
         Credentials_AccessKeySecret = response["Credentials"]["AccessKeySecret"]
         Credentials_SecurityToken = response["Credentials"]['SecurityToken']
-        return Credentials_AccessKeyId, Credentials_AccessKeySecret, Credentials_SecurityToken
+        return Credentials_AccessKeyId, Credentials_AccessKeySecret,Credentials_SecurityToken
 
     def get_secret_value(self, Credentials_AccessKeyId, Credentials_AccessKeySecret, Credentials_SecurityToken):
         sts_token_credential = StsTokenCredential(Credentials_AccessKeyId, Credentials_AccessKeySecret,
@@ -86,7 +92,7 @@ class DataUploader:
         encoded_key = self.base64_encode_key()
         fernet = F(encoded_key)
         by_data = data.encode('utf-8')
-        ## AES 256 encryption: 
+        ## AES 256 encryption:
         encrypted_data = fernet.encrypt(by_data)
         return encrypted_data
 
@@ -144,7 +150,7 @@ class DataUploader:
             while True:
                 sql_query = sql_string + f" ORDER BY (select NULL) LIMIT {self.batchsize} OFFSET " + str(
                     (k - 1) * self.batchsize + 0)
-                df = spark.sql(f"""{sql_query}""")
+                df = self.spark.sql(f"""{sql_query}""")
                 pdf = df.toPandas()
                 json_df = pdf.to_json(orient='records', force_ascii=False, date_format='iso')
                 print('data encrypt')
@@ -169,7 +175,7 @@ class DataUploader:
                     break
         else:
             sql_query = sql_string
-            df = spark.sql(f"""{sql_query}""")
+            df = self.spark.sql(f"""{sql_query}""")
             pdf = df.toPandas()
             json_df = pdf.to_json(orient='records', force_ascii=False, date_format='iso')
 
