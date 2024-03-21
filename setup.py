@@ -23,8 +23,7 @@ setup(
 'aliyunsdkcore',
 'alibabacloud-credentials',
 'aliyun-python-sdk-kms==2.16.2',
-'pyspark',
-'azure'
+'pyspark'
   ],
   include_package_data=True
 )
